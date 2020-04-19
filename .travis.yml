@@ -1,0 +1,26 @@
+sudo: required
+services:
+    - docker
+env:
+    global:
+        - SHA=$(git rev-parse HEAD)
+        - CLOUDSDK_CORE_DISABLE_PROMPTS=1
+before_install:
+    - curl https://sdk.cloud.google.com | bash > /dev/null;
+    - source $HOME/google-cloud-sdk/path.bash.inc
+    - gcloud components update kubectl
+    - gcloud auth activate-service-account --key-file service-account.json
+    - gcloud config set project first-multi-k8s
+    - gcloud config set compute/zone europe-west2-a
+    - gcloud container cluster get-credentials first-multi-cluster	
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    - docker build -t gabrielade/react-test -f ./client/dev.Dockerfile ./client
+
+script:
+    - docker run -e CI=true gabrielade/react-test npm run test
+
+deploy:
+    provider: script
+    script: bash ./deploy.sh
+    on:
+        branch: master
